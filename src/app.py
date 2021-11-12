@@ -1,5 +1,15 @@
 import json
+import boto3
 import requests
+import memcache
+from sentence_transformers import SentenceTransformer
+from config import Config
+
+
+dynamodb = boto3.resource("dynamodb", region_name=Config.REGION)
+cache_faiss = memcache.Client([Config.MEMCACHE_ADDRESS], debug=0)
+
+sentences = ["This is an example sentence", "Each sentence is converted"]
 
 
 def lambda_handler(event, context):
