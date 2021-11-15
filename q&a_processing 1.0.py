@@ -4,6 +4,8 @@ from requests.exceptions import HTTPError
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer, util
+import boto3
+import memcache
 
 
 ss_URL = (
@@ -700,19 +702,35 @@ basic_q_a = [
 ]
 
 
+MEMCACHE_ADDRESS = "127.0.0.1:11211"
+cache_cli = memcache.Client([MEMCACHE_ADDRESS], debug=True)
+
+dynamodb = boto3.resource("dynamodb", region_name="eu-west-1")
+table = dynamodb.Table(
+    "steve-basic-questions",
+)
+response = table.scan()
+# list of basic questions from DynamoDB
+items = response["Items"]
+
 if __name__ == "__main__":
 
-    write_file = False  # write questions to a txt file
+    write_file = True  # write questions to a txt file
     embed_file = False  # read from txt file and embeds questions
     search_in_faiss = True  # perform sentence similarity in FAISS
 
     if write_file:
         with open("./data/basic_q&a.txt", "w") as f:
-            for elem in basic_q_a:
-                # print(elem)
-                # print(list(elem.values())[0])
-                question, answer = list(elem.values())[0][0], list(elem.values())[0][1]
+            for i in range(len(items)):
+                question, answer = items[i]["question"], items[i]["answer"]
                 f.writelines(question + "\t" + answer + "\n")
+
+        qa_list = dict()
+        for i in range(len(items)):
+            qa_list[items[i]["question"]] = items[i]["answer"]
+
+        stored = cache_cli.set("qa_list", qa_list)
+        print(stored)
 
     if embed_file:
         questions_to_embed = []
@@ -756,7 +774,7 @@ if __name__ == "__main__":
         with open("./data/questions.txt", "r") as rf:
             lines = rf.read().split("\n")
 
-        print(lines[:5])
+        set_var = cache_cli.set("basic_questions", lines)
 
         with open(f"./data/q&a_embeddings.npy", "rb") as fp:
             qa_embeddings = np.load(fp)
@@ -791,9 +809,16 @@ if __name__ == "__main__":
         # print(I[0])
         # print(type(I[0]))
         # print([f"{i}: {lines[i]}" for i in I[0]])
+        basic_questions = cache_cli.get("basic_questions")
+        qa_list = cache_cli.get("qa_list")
+        # print(qa_list[i][0])
         for i in I[0]:
             # print(lines[i])
-            from_faiss = lines[i]
+            # from_faiss = lines[i]
+            from_faiss = basic_questions[i]
+
+        best_answer = qa_list[from_faiss]
+        print(f"best_answer: {best_answer}")
 
         print(f"FAISS search time: {((time.time() -start)):.3f} sec")
 
