@@ -817,9 +817,6 @@ if __name__ == "__main__":
             # from_faiss = lines[i]
             from_faiss = basic_questions[i]
 
-        best_answer = qa_list[from_faiss]
-        print(f"best_answer: {best_answer}")
-
         print(f"FAISS search time: {((time.time() -start)):.3f} sec")
 
         query_params = {
@@ -836,4 +833,6 @@ if __name__ == "__main__":
 
         print(f"\nuser query: {sentence_to_search}")
         print(f"best match: {from_faiss}")
+        best_answer = qa_list[from_faiss]
+        print(f"best_answer: {best_answer}")
         print(f"prob: {prob:.3f}")
